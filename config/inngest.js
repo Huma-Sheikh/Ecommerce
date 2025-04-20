@@ -1,7 +1,7 @@
 import User from "@/models/User";
 import { Inngest } from "inngest";
-import { connection } from "mongoose";
-
+// import { connection } from "mongoose";
+import connection from "./db";
 // Create a client to send and receive events
 export const inngest = new Inngest({ id: "ecommerce-next" });
  
