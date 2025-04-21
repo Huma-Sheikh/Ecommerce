@@ -1,8 +1,10 @@
 'use client'
 import { productsDummyData, userDummyData } from "@/assets/assets";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
+import axios from "axios";
 import { useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
+import toast from "react-hot-toast";
 
 export const AppContext = createContext();
 
@@ -15,9 +17,10 @@ export const AppContextProvider = (props) => {
     const currency = process.env.NEXT_PUBLIC_CURRENCY
     const router = useRouter()
 const {user} =useUser()
+const {getToken}=useAuth()
     const [products, setProducts] = useState([])
     const [userData, setUserData] = useState(false)
-    const [isSeller, setIsSeller] = useState(true)
+    const [isSeller, setIsSeller] = useState(false)
     const [cartItems, setCartItems] = useState({})
 
     const fetchProductData = async () => {
@@ -25,8 +28,39 @@ const {user} =useUser()
     }
 
     const fetchUserData = async () => {
-        setUserData(userDummyData)
-    }
+        try {
+          if (user.publicMetadata.role === "seller") {
+            setIsSeller(true);
+          }
+      
+          const token = await getToken();
+      
+          const response = await axios.get("/api/user/data", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+      
+          const data = response.data;
+      
+          if (data.success) {
+            setUserData(data.user);
+            setCartItems(data.user.cartItems);
+          } else {
+            toast.error(data.message || "Failed to fetch user data.");
+          }
+      
+        } catch (error) {
+          // If `error.response` exists, show backend error
+          if (error.response?.data?.message) {
+            toast.error(error.response.data.message);
+          } else {
+            toast.error(error.message || "Something went wrong.");
+          }
+        }
+      };
+      
+
+      
+    
 
     const addToCart = async (itemId) => {
 
@@ -79,11 +113,14 @@ const {user} =useUser()
     }, [])
 
     useEffect(() => {
-        fetchUserData()
-    }, [])
+        if(user){
+            fetchUserData()
+        }
+        
+    }, [user])
 
     const value = {
-        user,
+        user,getToken,
         currency, router,
         isSeller, setIsSeller,
         userData, fetchUserData,
